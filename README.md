@@ -15,3 +15,5 @@ Python module and client for Danfoss Air HRV systems.
 - bypass_off
 - automatic_bypass_on
 - automatic_bypass_off
+- cooking_on
+- cooking_off
