@@ -57,12 +57,12 @@ class DanfossClient:
                            UpdateCommand.boost_deactivate}:
                 return self._read_bit(ReadCommand.boost, socket)
 
-            if(command in {UpdateCommand.manual_bypass_activate,
-                             UpdateCommand.manual_bypass_deactivate}):
+            if command in {UpdateCommand.manual_bypass_activate,
+                             UpdateCommand.manual_bypass_deactivate}:
                 return self._read_bit(ReadCommand.bypass, socket)
 
-            if(command in {UpdateCommand.cooking_activate,
-                             UpdateCommand.cooking_deactivate}):
+            if command in {UpdateCommand.cooking_activate,
+                             UpdateCommand.cooking_deactivate}:
                 return self._read_bit(ReadCommand.cooking, socket)
 
             return self._read_command(ReadCommand.automatic_bypass, socket)
