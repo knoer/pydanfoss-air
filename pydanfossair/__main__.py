@@ -25,18 +25,23 @@ def main():
             print("Activate boost: {0}".format(client.command(UpdateCommand.boost_deactivate)))
 
         if args.command == "bypass_on":
-            print("Activate bypass: {0}".format(client.command(UpdateCommand.bypass_activate)))
+            print("Activate bypass: {0}".format(client.command(UpdateCommand.manual_bypass_activate)))
 
         if args.command == "bypass_off":
-            print("Activate bypass: {0}".format(client.command(UpdateCommand.bypass_deactivate)))
+            print("Activate bypass: {0}".format(client.command(UpdateCommand.manual_bypass_deactivate)))
+
+        if args.command == "cooking_on":
+            print("Activate cooking: {0}".format(client.command(UpdateCommand.cooking_activate)))
+
+        if args.command == "cooking_off":
+            print("Activate cooking: {0}".format(client.command(UpdateCommand.cooking_deactivate)))
 
         if args.command == "automatic_bypass_off":
-            print("Automtic bypass: {0}"
-                  .format(client.command(UpdateCommand.automatic_bypass_deactivate)))
+            print("Automatic bypass: {0}".format(client.command(UpdateCommand.automatic_bypass_deactivate)))
 
         if args.command == "automatic_bypass_on":
-            print("Automtic bypass: {0}"
-                  .format(client.command(UpdateCommand.automatic_bypass_activate)))
+            print("Automatic bypass: {0}".format(client.command(UpdateCommand.automatic_bypass_activate)))
+            
     else:
         result = client.read_all()
 

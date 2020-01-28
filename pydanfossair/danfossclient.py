@@ -1,38 +1,14 @@
-from socket import socket as python_socket
+from socket import socket
 from socket import AF_INET
 from socket import SOCK_STREAM
 from .commands import ReadCommand
 from .commands import UpdateCommand
-from .operation_mode import OperationMode
 
 class DanfossClient:
-    '''
-    Primary class for communicatin with Danfoss HRV.
-    '''
     def __init__(self, host):
         self._host = host
 
     def command(self, command):
-        with python_socket(AF_INET, SOCK_STREAM) as danfoss_socket:
-            danfoss_socket.connect((self._host, 30046))
-            result = self._command(command, danfoss_socket)
-            danfoss_socket.close()
-
-            return result
-
-    def read_all(self):
-        result = {}
-
-        with python_socket(AF_INET, SOCK_STREAM) as danfoss_socket:
-            danfoss_socket.connect((self._host, 30046))
-            for command in ReadCommand:
-                result[command] = self._command(command, danfoss_socket)
-
-            danfoss_socket.close()
-
-        return result
-
-    def _command(self, command, socket):
         if isinstance(command, ReadCommand):
             return self._read_command(command, socket)
 
@@ -41,69 +17,75 @@ class DanfossClient:
 
         raise Exception("Not yet implemented")
 
+    def read_all(self):
+        result = {}
+
+        for command in ReadCommand:
+            result[command] = self.command(command)
+
+        return result
 
     def _update_command(self, command, socket):
         if command in {UpdateCommand.boost_activate,
                        UpdateCommand.boost_deactivate,
-                       UpdateCommand.bypass_activate,
-                       UpdateCommand.bypass_deactivate,
+                       UpdateCommand.manual_bypass_activate,
+                       UpdateCommand.manual_bypass_deactivate,
+                       UpdateCommand.cooking_activate,
+                       UpdateCommand.cooking_deactivate,
                        UpdateCommand.automatic_bypass_activate,
                        UpdateCommand.automatic_bypass_deactivate}:
             self._update_switch(command, socket)
 
-            if command in {UpdateCommand.boost_activate,
-                           UpdateCommand.boost_deactivate}:
+            if(command == UpdateCommand.boost_activate or
+               command == UpdateCommand.boost_deactivate):
                 return self._read_bit(ReadCommand.boost, socket)
 
-            if command in {UpdateCommand.bypass_activate,
-                           UpdateCommand.bypass_deactivate}:
+            elif(command in {UpdateCommand.manual_bypass_activate,
+                             UpdateCommand.manual_bypass_deactivate}):
                 return self._read_bit(ReadCommand.bypass, socket)
 
-            return self._read_command(ReadCommand.automatic_bypass, socket)
+            elif(command in {UpdateCommand.cooking_activate,
+                             UpdateCommand.cooking_deactivate}):
+                return self._read_bit(ReadCommand.cooking, socket)
 
-        raise Exception("Unknown comand: {0}".format(command))
+            else:
+                return self._read_command(ReadCommand.automatic_bypass, socket)
+
+        raise Exception("Unknown command: {0}".format(command))
 
     def _update_switch(self, command, socket):
         self._read_value(command, socket)
 
     def _read_command(self, command, socket):
-        '''
-        Internal method to read data from unit.
-        '''
+        if(command == ReadCommand.exhaustTemperature or
+           command == ReadCommand.outdoorTemperature or
+           command == ReadCommand.extractTemperature or
+           command == ReadCommand.supplyTemperature):
+            return self._read_temperature(command, socket)
 
-        return_value = None
+        if(command == ReadCommand.humidity or
+           command == ReadCommand.filterPercent or
+           command == ReadCommand.battery_percent
+                ):
+            return self._read_percent(command, socket)
 
-        if command in {ReadCommand.exhaustTemperature,
-                       ReadCommand.outdoorTemperature,
-                       ReadCommand.extractTemperature,
-                       ReadCommand.supplyTemperature}:
-            return_value = self._read_temperature(command, socket)
-
-        if command in {ReadCommand.humidity,
-                       ReadCommand.filterPercent,
-                       ReadCommand.battery_percent}:
-            return_value = self._read_percent(command, socket)
-
-        if command in {ReadCommand.bypass,
-                       ReadCommand.boost,
-                       ReadCommand.away_mode}:
-            return_value = self._read_bit(command, socket)
+        if(command == ReadCommand.bypass or
+           command == ReadCommand.boost or
+           command == ReadCommand.cooking or
+           command == ReadCommand.away_mode
+                ):
+            return self._read_bit(command, socket)
 
         if command == ReadCommand.automatic_bypass:
-            return_value = not self._read_bit(command, socket)
+            return not self._read_bit(command, socket)
 
-        if command in {ReadCommand.supply_fan_speed,
-                       ReadCommand.exhaust_fan_speed}:
-            return_value = self._read_short(command, socket)
+        if(command == ReadCommand.supply_fan_speed or
+           command == ReadCommand.exhaust_fan_speed
+                ):
+            return self._read_short(command, socket)
 
-        if command == ReadCommand.fan_step:
-            return_value = self._read_byte(command, socket)
-
-        if command == ReadCommand.operation_mode:
-            return_value = OperationMode(self._read_byte(command, socket))
-
-        if return_value is not None:
-            return return_value
+        if(command == ReadCommand.fan_step):
+            return self._read_byte(command, socket)
 
         raise Exception("Unknown command: {0}".format(command))
 
@@ -119,20 +101,24 @@ class DanfossClient:
         return int(result[0]) * 100/255
 
     def _read_value(self, command, socket):
-        socket.send(command.value)
-        result = socket.recv(63)
+        with socket(AF_INET, SOCK_STREAM) as s:
+            s.connect((self._host, 30046))
+            s.send(command.value)
+            result = s.recv(63)
+            s.close()
 
-        return result
+            return result
 
     def _read_byte(self, command, socket):
         result = self._read_value(command, socket)
+
         r = bytes([result[0]])
 
-        return int.from_bytes(r, byteorder='big', signed=True)
+        return int.from_bytes(r, byteorder = 'big', signed=True)
 
     def _read_short(self, command, socket):
         result = self._read_value(command, socket)
 
         r = bytes([result[0], result[1]])
 
-        return int.from_bytes(r, byteorder='big', signed=True)
+        return int.from_bytes(r, byteorder = 'big', signed=True)
